@@ -10,8 +10,9 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 enum class AppScreen {
-    Calendar,
-    Checklist,
+    Day,
+    Week,
+    Month,
     Settings
 }
 
@@ -20,7 +21,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = CalendarRepository(db)
 
     // Screen state
-    private val _currentScreen = MutableStateFlow(AppScreen.Calendar)
+    private val _currentScreen = MutableStateFlow(AppScreen.Month)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
 
     // Selected date in millis (at midnight)

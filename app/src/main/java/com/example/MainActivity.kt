@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ui.screens.CalendarScreen
-import com.example.ui.screens.ChecklistScreen
 import com.example.ui.screens.LockScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -92,7 +91,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onSelectToday = {
                                         viewModel.selectDate(viewModel.getMidnightMillis(System.currentTimeMillis()))
-                                        viewModel.setScreen(AppScreen.Calendar)
+                                        viewModel.setScreen(AppScreen.Month)
                                         scope.launch { drawerState.close() }
                                     },
                                     pinCode = pinCode,
@@ -195,28 +194,40 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.testTag("app_navigation_bar")
                                 ) {
                                     NavigationBarItem(
-                                        selected = currentScreen == AppScreen.Calendar,
-                                        onClick = { viewModel.setScreen(AppScreen.Calendar) },
+                                        selected = currentScreen == AppScreen.Day,
+                                        onClick = { viewModel.setScreen(AppScreen.Day) },
+                                        icon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Today,
+                                                contentDescription = "Ngày"
+                                            )
+                                        },
+                                        label = { Text("Ngày", fontWeight = FontWeight.Bold) },
+                                        modifier = Modifier.testTag("nav_day")
+                                    )
+                                    NavigationBarItem(
+                                        selected = currentScreen == AppScreen.Week,
+                                        onClick = { viewModel.setScreen(AppScreen.Week) },
+                                        icon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DateRange,
+                                                contentDescription = "Tuần"
+                                            )
+                                        },
+                                        label = { Text("Tuần", fontWeight = FontWeight.Bold) },
+                                        modifier = Modifier.testTag("nav_week")
+                                    )
+                                    NavigationBarItem(
+                                        selected = currentScreen == AppScreen.Month,
+                                        onClick = { viewModel.setScreen(AppScreen.Month) },
                                         icon = {
                                             Icon(
                                                 imageVector = Icons.Default.CalendarToday,
-                                                contentDescription = "Lịch Trình"
+                                                contentDescription = "Tháng"
                                             )
                                         },
-                                        label = { Text("Lịch Trình", fontWeight = FontWeight.Bold) },
-                                        modifier = Modifier.testTag("nav_calendar")
-                                    )
-                                    NavigationBarItem(
-                                        selected = currentScreen == AppScreen.Checklist,
-                                        onClick = { viewModel.setScreen(AppScreen.Checklist) },
-                                        icon = {
-                                            Icon(
-                                                imageVector = Icons.Default.Checklist,
-                                                contentDescription = "Danh sách"
-                                            )
-                                        },
-                                        label = { Text("Danh Sách", fontWeight = FontWeight.Bold) },
-                                        modifier = Modifier.testTag("nav_checklist")
+                                        label = { Text("Tháng", fontWeight = FontWeight.Bold) },
+                                        modifier = Modifier.testTag("nav_month")
                                     )
                                     NavigationBarItem(
                                         selected = currentScreen == AppScreen.Settings,
@@ -242,8 +253,9 @@ class MainActivity : ComponentActivity() {
                                 .background(MaterialTheme.colorScheme.background)
                         ) {
                             when (currentScreen) {
-                                AppScreen.Calendar -> CalendarScreen(viewModel = viewModel)
-                                AppScreen.Checklist -> ChecklistScreen(viewModel = viewModel)
+                                AppScreen.Day -> CalendarScreen(viewModel = viewModel, viewMode = "day")
+                                AppScreen.Week -> CalendarScreen(viewModel = viewModel, viewMode = "week")
+                                AppScreen.Month -> CalendarScreen(viewModel = viewModel, viewMode = "month")
                                 AppScreen.Settings -> SettingsScreen(viewModel = viewModel)
                             }
                         }
@@ -429,23 +441,34 @@ fun DrawerContent(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Navigation Drawer Item - Calendar Screen
+        // Navigation Drawer Item - Day View
         NavigationDrawerItem(
-            label = { Text("Lịch trình chính", fontWeight = FontWeight.Bold) },
-            selected = currentScreen == AppScreen.Calendar,
-            onClick = { onScreenSelect(AppScreen.Calendar) },
-            icon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+            label = { Text("Lịch theo ngày", fontWeight = FontWeight.Bold) },
+            selected = currentScreen == AppScreen.Day,
+            onClick = { onScreenSelect(AppScreen.Day) },
+            icon = { Icon(Icons.Default.Today, contentDescription = null) },
             colors = NavigationDrawerItemDefaults.colors(
                 unselectedContainerColor = Color.Transparent
             )
         )
 
-        // Navigation Drawer Item - Checklist Screen
+        // Navigation Drawer Item - Week View
         NavigationDrawerItem(
-            label = { Text("Danh sách công việc", fontWeight = FontWeight.Bold) },
-            selected = currentScreen == AppScreen.Checklist,
-            onClick = { onScreenSelect(AppScreen.Checklist) },
-            icon = { Icon(Icons.Default.Checklist, contentDescription = null) },
+            label = { Text("Lịch theo tuần", fontWeight = FontWeight.Bold) },
+            selected = currentScreen == AppScreen.Week,
+            onClick = { onScreenSelect(AppScreen.Week) },
+            icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        // Navigation Drawer Item - Month View
+        NavigationDrawerItem(
+            label = { Text("Lịch theo tháng", fontWeight = FontWeight.Bold) },
+            selected = currentScreen == AppScreen.Month,
+            onClick = { onScreenSelect(AppScreen.Month) },
+            icon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
             colors = NavigationDrawerItemDefaults.colors(
                 unselectedContainerColor = Color.Transparent
             )

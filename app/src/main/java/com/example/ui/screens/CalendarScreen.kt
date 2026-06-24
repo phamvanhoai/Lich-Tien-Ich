@@ -34,6 +34,7 @@ import java.util.*
 @Composable
 fun CalendarScreen(
     viewModel: MainViewModel,
+    viewMode: String = "month",
     modifier: Modifier = Modifier
 ) {
     val selectedDate by viewModel.selectedDate.collectAsState()
@@ -46,11 +47,16 @@ fun CalendarScreen(
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
 
-    // Generate the full-month days around selectedDate
+    // Generate month days around selectedDate
     val monthDays = remember(selectedDate) {
         DateTimeUtils.getMonthDays(selectedDate)
     }
-    
+
+    // Generate week days (take first 7 days for the selected week)
+    val weekDays = remember(selectedDate) {
+        DateTimeUtils.getWeekDays(selectedDate).take(7)
+    }
+
     val currentCal = remember(selectedDate) {
         Calendar.getInstance().apply { timeInMillis = selectedDate }
     }
@@ -93,7 +99,7 @@ fun CalendarScreen(
                         .fillMaxWidth()
                         .padding(bottom = 12.dp)
                 ) {
-                    // Month Navigation Header
+                    // Navigation Header (Adapted for month/week/day)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -105,20 +111,34 @@ fun CalendarScreen(
                             onClick = {
                                 val cal = Calendar.getInstance()
                                 cal.timeInMillis = selectedDate
-                                cal.add(Calendar.MONTH, -1)
+                                when (viewMode) {
+                                    "month" -> cal.add(Calendar.MONTH, -1)
+                                    "week" -> cal.add(Calendar.DAY_OF_YEAR, -7)
+                                    "day" -> cal.add(Calendar.DAY_OF_YEAR, -1)
+                                }
                                 viewModel.selectDate(cal.timeInMillis)
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ChevronLeft,
-                                contentDescription = "Tháng trước",
+                                contentDescription = "Trước",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val headerText = when (viewMode) {
+                                "month" -> DateTimeUtils.formatMonthYearVietnamese(selectedDate)
+                                "week" -> {
+                                    val startStr = DateTimeUtils.formatDateShort(weekDays.first())
+                                    val endStr = DateTimeUtils.formatDateShort(weekDays.last())
+                                    "Tuần: $startStr - $endStr"
+                                }
+                                else -> "Ngày " + DateTimeUtils.getDayOfMonth(selectedDate) + " " + DateTimeUtils.formatMonthYearVietnamese(selectedDate)
+                            }
+                            
                             Text(
-                                text = DateTimeUtils.formatMonthYearVietnamese(selectedDate),
+                                text = headerText,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
@@ -153,139 +173,289 @@ fun CalendarScreen(
                                 onClick = {
                                     val cal = Calendar.getInstance()
                                     cal.timeInMillis = selectedDate
-                                    cal.add(Calendar.MONTH, 1)
+                                    when (viewMode) {
+                                        "month" -> cal.add(Calendar.MONTH, 1)
+                                        "week" -> cal.add(Calendar.DAY_OF_YEAR, 7)
+                                        "day" -> cal.add(Calendar.DAY_OF_YEAR, 1)
+                                    }
                                     viewModel.selectDate(cal.timeInMillis)
                                 }
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = "Tháng sau",
+                                    contentDescription = "Sau",
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
                     }
 
-                    // Weekdays header row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val dayHeaders = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
-                        dayHeaders.forEach { header ->
-                            Text(
-                                text = header,
-                                modifier = Modifier.weight(1f),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (header == "CN") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        }
-                    }
+                    when (viewMode) {
+                        "month" -> {
+                            // Weekdays header row
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                val dayHeaders = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
+                                dayHeaders.forEach { header ->
+                                    Text(
+                                        text = header,
+                                        modifier = Modifier.weight(1f),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (header == "CN") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
 
-                    // Month Days Grid
-                    val rows = remember(monthDays) { monthDays.chunked(7) }
-                    rows.forEach { week ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            week.forEach { dayMillis ->
-                                val dayCal = Calendar.getInstance().apply { timeInMillis = dayMillis }
-                                val isSelected = selectedDate == dayMillis
-                                val isToday = viewModel.getMidnightMillis(System.currentTimeMillis()) == dayMillis
-                                val isCurrentMonth = dayCal.get(Calendar.MONTH) == currentMonth && dayCal.get(Calendar.YEAR) == currentYear
-                                
-                                val (lDay, lMonth, _) = com.example.utils.LunarUtils.getLunarDate(dayMillis)
-                                val lunarDayStr = if (lDay == 1) "$lDay/$lMonth" else lDay.toString()
-                                
-                                Box(
+                            // Month Days Grid
+                            val rows = remember(monthDays) { monthDays.chunked(7) }
+                            rows.forEach { week ->
+                                Row(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .padding(2.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(
-                                            when {
-                                                isSelected -> MaterialTheme.colorScheme.primary
-                                                isToday -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                                                else -> Color.Transparent
-                                            }
-                                        )
-                                        .clickable {
-                                            viewModel.selectDate(dayMillis)
-                                        }
-                                        .testTag("date_cell_${DateTimeUtils.getDayOfMonth(dayMillis)}"),
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
-                                        // Solar day text
-                                        Text(
-                                            text = DateTimeUtils.getDayOfMonth(dayMillis),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
-                                            color = when {
-                                                isSelected -> MaterialTheme.colorScheme.onPrimary
-                                                !isCurrentMonth -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                                isToday -> MaterialTheme.colorScheme.primary
-                                                else -> MaterialTheme.colorScheme.onSurface
-                                            }
-                                        )
+                                    week.forEach { dayMillis ->
+                                        val dayCal = Calendar.getInstance().apply { timeInMillis = dayMillis }
+                                        val isSelected = selectedDate == dayMillis
+                                        val isToday = viewModel.getMidnightMillis(System.currentTimeMillis()) == dayMillis
+                                        val isCurrentMonth = dayCal.get(Calendar.MONTH) == currentMonth && dayCal.get(Calendar.YEAR) == currentYear
                                         
-                                        // Lunar day text
-                                        Text(
-                                            text = lunarDayStr,
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                            fontWeight = if (lDay == 1 || lDay == 15) FontWeight.Bold else FontWeight.Normal,
-                                            color = when {
-                                                isSelected -> MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                                                !isCurrentMonth -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                                                lDay == 1 || lDay == 15 -> MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
-                                                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                            }
-                                        )
+                                        val (lDay, lMonth, _) = com.example.utils.LunarUtils.getLunarDate(dayMillis)
+                                        val lunarDayStr = if (lDay == 1) "$lDay/$lMonth" else lDay.toString()
                                         
-                                        // Event indicator dots
-                                        val dayEvents = allEvents.filter { it.dateMillis == dayMillis }
-                                        if (dayEvents.isNotEmpty()) {
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                modifier = Modifier.padding(top = 2.dp)
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .aspectRatio(1f)
+                                                .padding(2.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(
+                                                    when {
+                                                        isSelected -> MaterialTheme.colorScheme.primary
+                                                        isToday -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                                        else -> Color.Transparent
+                                                    }
+                                                )
+                                                .clickable {
+                                                    viewModel.selectDate(dayMillis)
+                                                }
+                                                .testTag("date_cell_${DateTimeUtils.getDayOfMonth(dayMillis)}"),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.Center,
+                                                modifier = Modifier.fillMaxSize()
                                             ) {
-                                                dayEvents.take(3).forEach { ev ->
-                                                    val parsedColor = remember(ev.colorHex) {
-                                                        try {
+                                                Text(
+                                                    text = DateTimeUtils.getDayOfMonth(dayMillis),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
+                                                    color = when {
+                                                        isSelected -> MaterialTheme.colorScheme.onPrimary
+                                                        !isCurrentMonth -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                        isToday -> MaterialTheme.colorScheme.primary
+                                                        else -> MaterialTheme.colorScheme.onSurface
+                                                    }
+                                                )
+                                                
+                                                Text(
+                                                    text = lunarDayStr,
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                    fontWeight = if (lDay == 1 || lDay == 15) FontWeight.Bold else FontWeight.Normal,
+                                                    color = when {
+                                                        isSelected -> MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                                                        !isCurrentMonth -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                                                        lDay == 1 || lDay == 15 -> MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
+                                                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                                    }
+                                                )
+                                                
+                                                val dayEvents = allEvents.filter { it.dateMillis == dayMillis }
+                                                if (dayEvents.isNotEmpty()) {
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                        modifier = Modifier.padding(top = 2.dp)
+                                                    ) {
+                                                        dayEvents.take(3).forEach { ev ->
+                                                            val parsedColor = try {
+                                                                Color(android.graphics.Color.parseColor(ev.colorHex))
+                                                            } catch (e: Exception) {
+                                                                null
+                                                            }
+                                                            val dotColor = if (isSelected) {
+                                                                MaterialTheme.colorScheme.onPrimary
+                                                            } else {
+                                                                parsedColor ?: MaterialTheme.colorScheme.primary
+                                                            }
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(4.dp)
+                                                                    .clip(RoundedCornerShape(100.dp))
+                                                                    .background(dotColor)
+                                                            )
+                                                        }
+                                                    }
+                                                } else {
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        "week" -> {
+                            // Weekdays strip inside card
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                weekDays.forEach { dayMillis ->
+                                    val isSelected = selectedDate == dayMillis
+                                    val isToday = viewModel.getMidnightMillis(System.currentTimeMillis()) == dayMillis
+                                    
+                                    val (lDay, lMonth, _) = com.example.utils.LunarUtils.getLunarDate(dayMillis)
+                                    val lunarDayStr = if (lDay == 1) "$lDay/$lMonth" else lDay.toString()
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(2.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                when {
+                                                    isSelected -> MaterialTheme.colorScheme.primary
+                                                    isToday -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                                }
+                                            )
+                                            .clickable { viewModel.selectDate(dayMillis) }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = DateTimeUtils.getDayOfWeekAbbreviated(dayMillis),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = when {
+                                                    isSelected -> MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                                                    DateTimeUtils.getDayOfWeekAbbreviated(dayMillis) == "CN" -> MaterialTheme.colorScheme.error
+                                                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                                }
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = DateTimeUtils.getDayOfMonth(dayMillis),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = lunarDayStr,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                            )
+                                            
+                                            // Event dots
+                                            val dayEvents = allEvents.filter { it.dateMillis == dayMillis }
+                                            if (dayEvents.isNotEmpty()) {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                    modifier = Modifier.padding(top = 4.dp)
+                                                ) {
+                                                    dayEvents.take(3).forEach { ev ->
+                                                        val parsedColor = try {
                                                             Color(android.graphics.Color.parseColor(ev.colorHex))
                                                         } catch (e: Exception) {
                                                             null
                                                         }
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(4.dp)
+                                                                .clip(RoundedCornerShape(100.dp))
+                                                                .background(if (isSelected) MaterialTheme.colorScheme.onPrimary else (parsedColor ?: MaterialTheme.colorScheme.primary))
+                                                        )
                                                     }
-                                                    val dotColor = if (isSelected) {
-                                                        MaterialTheme.colorScheme.onPrimary
-                                                    } else {
-                                                        parsedColor ?: MaterialTheme.colorScheme.primary
-                                                    }
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(4.dp)
-                                                            .clip(RoundedCornerShape(100.dp))
-                                                            .background(dotColor)
-                                                    )
                                                 }
                                             }
-                                        } else {
-                                            Spacer(modifier = Modifier.height(6.dp))
                                         }
                                     }
+                                }
+                            }
+                        }
+                        "day" -> {
+                            // Beautiful detailed day overview inside card
+                            val (lDay, lMonth, lLeap) = com.example.utils.LunarUtils.getLunarDate(selectedDate)
+                            val dayOfWeek = DateTimeUtils.getDayOfWeekAbbreviated(selectedDate)
+                            val dayOfWeekFull = when (dayOfWeek) {
+                                "CN" -> "Chủ Nhật"
+                                "T2" -> "Thứ Hai"
+                                "T3" -> "Thứ Ba"
+                                "T4" -> "Thứ Tư"
+                                "T5" -> "Thứ Năm"
+                                "T6" -> "Thứ Sáu"
+                                "T7" -> "Thứ Bảy"
+                                else -> ""
+                            }
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Huge Solar Day representation
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = DateTimeUtils.getDayOfMonth(selectedDate),
+                                            style = MaterialTheme.typography.displaySmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.width(16.dp))
+                                
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = dayOfWeekFull,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Âm lịch: Ngày $lDay tháng $lMonth${if (lLeap) " (Nhuận)" else ""}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Giờ Hoàng Đạo: Tý, Sửu, Mão, Ngọ, Thân, Dậu",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
                                 }
                             }
                         }
@@ -293,7 +463,7 @@ fun CalendarScreen(
                 }
             }
 
-            // Header indicating currently selected starting date
+            // Header indicating currently selected starting date / range
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -302,8 +472,13 @@ fun CalendarScreen(
                     .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    val labelText = when (viewMode) {
+                        "month" -> "Lịch trình ngày: ${DateTimeUtils.formatDateShort(selectedDate)}"
+                        "week" -> "Lịch trình trong tuần"
+                        else -> "Sự kiện trong ngày"
+                    }
                     Text(
-                        text = DateTimeUtils.formatDateVietnamese(selectedDate),
+                        text = if (viewMode == "day") DateTimeUtils.formatDateVietnamese(selectedDate) else labelText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -340,10 +515,13 @@ fun CalendarScreen(
                 }
             }
 
-            // Dynamic schedule views (single day details as requested)
-            val daysCount = 1
-            val daysList = remember(selectedDate) {
-                listOf(selectedDate)
+            // Determine days list to show events for
+            val daysList = remember(selectedDate, viewMode, weekDays) {
+                when (viewMode) {
+                    "week" -> weekDays
+                    "day" -> listOf(selectedDate)
+                    else -> listOf(selectedDate)
+                }
             }
 
             LazyColumn(
@@ -357,25 +535,49 @@ fun CalendarScreen(
                     val eventsForThisDay = allEvents.filter { it.dateMillis == dayMillis }
                     
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Day header if viewing multiple days
-                        if (daysCount > 1) {
-                            Text(
-                                text = "${DateTimeUtils.formatDateVietnamese(dayMillis)} (${com.example.utils.LunarUtils.getLunarDateString(dayMillis)})",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
+                        // For week view, we show a beautiful day header to separate days
+                        if (viewMode == "week") {
+                            val (ld, lm, _) = com.example.utils.LunarUtils.getLunarDate(dayMillis)
+                            val weekdayName = when (DateTimeUtils.getDayOfWeekAbbreviated(dayMillis)) {
+                                "T2" -> "Thứ Hai"
+                                "T3" -> "Thứ Ba"
+                                "T4" -> "Thứ Tư"
+                                "T5" -> "Thứ Năm"
+                                "T6" -> "Thứ Sáu"
+                                "T7" -> "Thứ Bảy"
+                                "CN" -> "Chủ Nhật"
+                                else -> ""
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "$weekdayName, ${DateTimeUtils.formatDateShort(dayMillis)}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Âm lịch: $ld/$lm",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                             HorizontalDivider(
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                                modifier = Modifier.padding(bottom = 6.dp)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }
 
                         if (eventsForThisDay.isEmpty()) {
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                                 ),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
@@ -383,19 +585,19 @@ fun CalendarScreen(
                                     .padding(vertical = 4.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier.padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.CalendarToday,
                                         contentDescription = "Trống",
                                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Không có sự kiện hoặc cuộc hẹn nào.",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        text = "Không có sự kiện nào.",
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                     )
                                 }
@@ -408,7 +610,7 @@ fun CalendarScreen(
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
             }
