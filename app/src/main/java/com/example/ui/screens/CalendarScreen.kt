@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.MainViewModel
 import com.example.data.Event
 import com.example.utils.DateTimeUtils
@@ -652,13 +653,14 @@ fun CalendarScreen(
 
     // ADD EVENT DIALOG
     if (showAddEventDialog) {
-        Dialog(onDismissRequest = { showAddEventDialog = false }) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(20.dp),
+        Dialog(
+            onDismissRequest = { showAddEventDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.background,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
+                    .fillMaxSize()
                     .testTag("add_event_dialog")
             ) {
                 var title by remember { mutableStateOf("") }
@@ -686,289 +688,308 @@ fun CalendarScreen(
                     Triple("Cuộc hẹn", "#009688", Icons.Default.Alarm)
                 )
 
-                LazyColumn(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Column {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Custom Header Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { showAddEventDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Quay lại",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Lập kế hoạch mới",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
                             val dateStr = DateTimeUtils.formatDateShort(selectedDate)
                             val lunarStr = com.example.utils.LunarUtils.getLunarDateString(selectedDate)
                             Text(
                                 text = "Cho ngày $dateStr ($lunarStr)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                     }
 
-                    item {
-                        OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            label = { Text("Tên sự kiện / hoạt động") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("add_event_title_input"),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    // Category Selection Chips
-                    item {
-                        Text(
-                            text = "Chọn danh mục & mã màu",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // First row of categories
-                            categories.take(3).forEach { (catName, catColorHex, icon) ->
-                                val isCatSelected = category == catName
-                                FilterChip(
-                                    selected = isCatSelected,
-                                    onClick = { 
-                                        category = catName
-                                        colorHex = catColorHex
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = catName,
-                                            tint = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else Color(android.graphics.Color.parseColor(catColorHex)),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    },
-                                    label = { Text(catName, fontSize = 12.sp) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // Second row of categories
-                            categories.drop(3).forEach { (catName, catColorHex, icon) ->
-                                val isCatSelected = category == catName
-                                FilterChip(
-                                    selected = isCatSelected,
-                                    onClick = { 
-                                        category = catName
-                                        colorHex = catColorHex
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = catName,
-                                            tint = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else Color(android.graphics.Color.parseColor(catColorHex)),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    },
-                                    label = { Text(catName, fontSize = 12.sp) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-
-                    // Time settings
-                    item {
-                        Text(
-                            text = "Thiết lập thời gian (24h)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Start Time
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = startHour,
-                                    onValueChange = { if (it.length <= 2) startHour = it },
-                                    modifier = Modifier.width(55.dp),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                Text(" : ", fontWeight = FontWeight.Bold)
-                                OutlinedTextField(
-                                    value = startMinute,
-                                    onValueChange = { if (it.length <= 2) startMinute = it },
-                                    modifier = Modifier.width(55.dp),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                            }
-                            
-                            Text("đến")
-                            
-                            // End Time
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = endHour,
-                                    onValueChange = { if (it.length <= 2) endHour = it },
-                                    modifier = Modifier.width(55.dp),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                Text(" : ", fontWeight = FontWeight.Bold)
-                                OutlinedTextField(
-                                    value = endMinute,
-                                    onValueChange = { if (it.length <= 2) endMinute = it },
-                                    modifier = Modifier.width(55.dp),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    item {
-                        OutlinedTextField(
-                            value = location,
-                            onValueChange = { location = it },
-                            label = { Text("Địa điểm / Địa chỉ (Map)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    item {
-                        OutlinedTextField(
-                            value = url,
-                            onValueChange = { url = it },
-                            label = { Text("Liên kết URL (Zoom, Website,...)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    // Reminder Switcher
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Báo thức",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text("Đặt thông báo nhắc nhở", fontWeight = FontWeight.Medium)
-                                    if (hasReminder) {
-                                        Text("Báo trước $reminderOffset phút", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            }
-                            Switch(
-                                checked = hasReminder,
-                                onCheckedChange = { hasReminder = it }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+                    ) {
+                        item {
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it },
+                                label = { Text("Tên sự kiện / hoạt động") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("add_event_title_input"),
+                                shape = RoundedCornerShape(12.dp)
                             )
                         }
-                        
-                        if (hasReminder) {
+
+                        // Category Selection Chips
+                        item {
+                            Text(
+                                text = "Chọn danh mục & mã màu",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
+                            
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                listOf(5, 15, 30, 60).forEach { mins ->
-                                    val isMinsSelected = reminderOffset == mins
+                                // First row of categories
+                                categories.take(3).forEach { (catName, catColorHex, icon) ->
+                                    val isCatSelected = category == catName
                                     FilterChip(
-                                        selected = isMinsSelected,
-                                        onClick = { reminderOffset = mins },
-                                        label = { Text("$mins phút", fontSize = 11.sp) }
+                                        selected = isCatSelected,
+                                        onClick = { 
+                                            category = catName
+                                            colorHex = catColorHex
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = catName,
+                                                tint = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else Color(android.graphics.Color.parseColor(catColorHex)),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        },
+                                        label = { Text(catName, fontSize = 12.sp) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                // Second row of categories
+                                categories.drop(3).forEach { (catName, catColorHex, icon) ->
+                                    val isCatSelected = category == catName
+                                    FilterChip(
+                                        selected = isCatSelected,
+                                        onClick = { 
+                                            category = catName
+                                            colorHex = catColorHex
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = catName,
+                                                tint = if (isCatSelected) MaterialTheme.colorScheme.onPrimary else Color(android.graphics.Color.parseColor(catColorHex)),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        },
+                                        label = { Text(catName, fontSize = 12.sp) },
+                                        modifier = Modifier.weight(1f)
                                     )
                                 }
                             }
                         }
-                    }
 
-                    item {
-                        OutlinedTextField(
-                            value = note,
-                            onValueChange = { note = it },
-                            label = { Text("Ghi chú bổ sung") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    // Save / Cancel Actions
-                    item {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { showAddEventDialog = false },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                        // Time settings
+                        item {
+                            Text(
+                                text = "Thiết lập thời gian (24h)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Hủy bỏ")
-                            }
-                            Button(
-                                onClick = {
-                                    if (title.isBlank()) {
-                                        Toast.makeText(context, "Vui lòng nhập tên sự kiện!", Toast.LENGTH_SHORT).show()
-                                        return@Button
-                                    }
-                                    val finalStart = "${startHour.padStart(2, '0')}:${startMinute.padStart(2, '0')}"
-                                    val finalEnd = "${endHour.padStart(2, '0')}:${endMinute.padStart(2, '0')}"
-                                    viewModel.addEvent(
-                                        title = title,
-                                        note = note,
-                                        category = category,
-                                        colorHex = colorHex,
-                                        dateMillis = selectedDate,
-                                        startTime = finalStart,
-                                        endTime = finalEnd,
-                                        url = url,
-                                        location = location,
-                                        hasReminder = hasReminder
+                                // Start Time
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = startHour,
+                                        onValueChange = { if (it.length <= 2) startHour = it },
+                                        modifier = Modifier.width(55.dp),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp)
                                     )
-                                    showAddEventDialog = false
-                                    Toast.makeText(context, "Đã thêm sự kiện thành công!", Toast.LENGTH_SHORT).show()
-                                },
-                                modifier = Modifier
-                                    .weight(1.5f)
-                                    .testTag("save_event_btn"),
+                                    Text(" : ", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = startMinute,
+                                        onValueChange = { if (it.length <= 2) startMinute = it },
+                                        modifier = Modifier.width(55.dp),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                                
+                                Text("đến")
+                                
+                                // End Time
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = endHour,
+                                        onValueChange = { if (it.length <= 2) endHour = it },
+                                        modifier = Modifier.width(55.dp),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    Text(" : ", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = endMinute,
+                                        onValueChange = { if (it.length <= 2) endMinute = it },
+                                        modifier = Modifier.width(55.dp),
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            OutlinedTextField(
+                                value = location,
+                                onValueChange = { location = it },
+                                label = { Text("Địa điểm / Địa chỉ (Map)") },
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+
+                        item {
+                            OutlinedTextField(
+                                value = url,
+                                onValueChange = { url = it },
+                                label = { Text("Liên kết URL (Zoom, Website,...)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+
+                        // Reminder Switcher
+                        item {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Lưu Lại", fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Báo thức",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text("Đặt thông báo nhắc nhở", fontWeight = FontWeight.Medium)
+                                        if (hasReminder) {
+                                            Text("Báo trước $reminderOffset phút", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                }
+                                Switch(
+                                    checked = hasReminder,
+                                    onCheckedChange = { hasReminder = it }
+                                )
+                            }
+                            
+                            if (hasReminder) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    listOf(5, 15, 30, 60).forEach { mins ->
+                                        val isMinsSelected = reminderOffset == mins
+                                        FilterChip(
+                                            selected = isMinsSelected,
+                                            onClick = { reminderOffset = mins },
+                                            label = { Text("$mins phút", fontSize = 11.sp) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            OutlinedTextField(
+                                value = note,
+                                onValueChange = { note = it },
+                                label = { Text("Ghi chú bổ sung") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+
+                        // Save / Cancel Actions
+                        item {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { showAddEventDialog = false },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Hủy bỏ")
+                                }
+                                Button(
+                                    onClick = {
+                                        if (title.isBlank()) {
+                                            Toast.makeText(context, "Vui lòng nhập tên sự kiện!", Toast.LENGTH_SHORT).show()
+                                            return@Button
+                                        }
+                                        val finalStart = "${startHour.padStart(2, '0')}:${startMinute.padStart(2, '0')}"
+                                        val finalEnd = "${endHour.padStart(2, '0')}:${endMinute.padStart(2, '0')}"
+                                        viewModel.addEvent(
+                                            title = title,
+                                            note = note,
+                                            category = category,
+                                            colorHex = colorHex,
+                                            dateMillis = selectedDate,
+                                            startTime = finalStart,
+                                            endTime = finalEnd,
+                                            url = url,
+                                            location = location,
+                                            hasReminder = hasReminder
+                                        )
+                                        showAddEventDialog = false
+                                        Toast.makeText(context, "Đã thêm sự kiện thành công!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier
+                                        .weight(1.5f)
+                                        .testTag("save_event_btn"),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Lưu Lại", fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }

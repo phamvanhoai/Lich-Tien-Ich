@@ -47,6 +47,7 @@ fun SettingsScreen(
     val pinCode by viewModel.pinCode.collectAsState()
     val adsRemoved by viewModel.adsRemoved.collectAsState()
     val sharedCalendarsEnabled by viewModel.sharedCalendarsEnabled.collectAsState()
+    val darkModeOption by viewModel.darkModeOption.collectAsState()
 
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showCheckoutDialog by remember { mutableStateOf(false) }
@@ -63,77 +64,76 @@ fun SettingsScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // PREMIUM UNLOCK SECTION (ADS REMOVE)
+        // DARK/LIGHT MODE SELECTION
         item {
             Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (adsRemoved) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                                     else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-                ),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(
-                    1.dp,
-                    if (adsRemoved) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("premium_ad_card")
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.WorkspacePremium,
-                            contentDescription = "Premium Icon",
-                            tint = if (adsRemoved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(32.dp)
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Giao diện",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = if (adsRemoved) "Bản Premium Đã Kích Hoạt ✨" else "Mở Khóa Premium (Lifetime)",
+                            text = "Chế độ giao diện (Sáng / Tối)",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = if (adsRemoved) "Cảm ơn bạn đã ủng hộ nhà phát triển! Ứng dụng của bạn hiện đã sạch bóng quảng cáo, hỗ trợ đầy đủ 20 chủ đề màu sắc cao cấp và đồng bộ hóa thông minh trọn đời."
-                               else "Sử dụng lịch trình không giới hạn: Gỡ bỏ toàn bộ biểu ngữ quảng cáo, mở khóa toàn vẹn 20 bộ giao diện màu sắc tùy chỉnh, và đồng bộ hóa đám mây Google Calendar / Outlook.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    if (!adsRemoved) {
-                        Button(
-                            onClick = { showCheckoutDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("purchase_premium_btn")
-                        ) {
-                            Text("Mua Bản Premium - Chỉ 49.000đ", fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Đã mua",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Bản quyền Pro Trọn Đời đang hoạt động ổn định.",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                    Text(
+                        text = "Tùy chỉnh giao diện hiển thị phù hợp với môi trường làm việc của bạn.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val options = listOf(
+                            Triple("system", "Hệ thống", Icons.Default.Settings),
+                            Triple("light", "Sáng", Icons.Default.Star),
+                            Triple("dark", "Tối", Icons.Default.Lock)
+                        )
+                        
+                        options.forEach { (option, label, icon) ->
+                            val isSelected = darkModeOption == option
+                            Button(
+                                onClick = {
+                                    viewModel.updateDarkModeOption(option)
+                                    Toast.makeText(context, "Đã đổi giao diện sang: $label", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("dark_mode_btn_$option")
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
@@ -242,15 +242,9 @@ fun SettingsScreen(
                     // Theme grid
                     ThemeGrid(
                         selectedThemeIndex = themeIndex,
-                        adsRemoved = adsRemoved,
                         onThemeSelect = { index ->
-                            if (index > 4 && !adsRemoved) {
-                                showCheckoutDialog = true
-                                Toast.makeText(context, "Vui lòng mở khóa Premium để chọn 15 chủ đề nâng cao còn lại!", Toast.LENGTH_LONG).show()
-                            } else {
-                                viewModel.updateThemeIndex(index)
-                                Toast.makeText(context, "Đã áp dụng màu chủ đề mới!", Toast.LENGTH_SHORT).show()
-                            }
+                            viewModel.updateThemeIndex(index)
+                            Toast.makeText(context, "Đã áp dụng màu chủ đề mới!", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
@@ -425,113 +419,7 @@ fun SettingsScreen(
         }
     }
 
-    // CHECKOUT PREMIUM OVERLAY DIALOG (MOCK IN-APP PURCHASE)
-    if (showCheckoutDialog) {
-        Dialog(onDismissRequest = { showCheckoutDialog = false }) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .testTag("premium_checkout_dialog")
-            ) {
-                var paymentStep by remember { mutableStateOf(0) } // 0: options, 1: processing, 2: success
 
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (paymentStep == 0) {
-                        Text(
-                            text = "Thanh toán Premium",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Mở khóa vĩnh viễn toàn bộ tính năng Lịch Tiện Ích Pro, xóa sạch biểu ngữ quảng cáo.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Payment methods options
-                        val methods = listOf(
-                            "Thẻ tín dụng / Ghi nợ (Visa/Mastercard)",
-                            "Ví điện tử MoMo",
-                            "Thanh toán ShopeePay",
-                            "Chuyển khoản Ngân hàng (QR Pay)"
-                        )
-                        methods.forEach { method ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { paymentStep = 1 }
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Payment,
-                                        contentDescription = "Pay icon",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(method, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                                }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        TextButton(onClick = { showCheckoutDialog = false }) {
-                            Text("Hủy giao dịch", color = MaterialTheme.colorScheme.error)
-                        }
-                    } else if (paymentStep == 1) {
-                        Text("Đang xử lý giao dịch...", fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        CircularProgressIndicator(modifier = Modifier.size(50.dp))
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text("Vui lòng không tắt ứng dụng Lịch Tiện Ích. Cổng bảo mật đang đối chiếu số dư.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
-                        
-                        LaunchedEffect(Unit) {
-                            delay(2000)
-                            viewModel.purchaseRemoveAds()
-                            paymentStep = 2
-                        }
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Celebration,
-                            contentDescription = "Success",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Thanh toán thành công!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Bạn hiện đang là thành viên Premium trọn đời của Lịch Tiện Ích. 20 màu giao diện đã được mở khóa hoàn tất!", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Button(
-                            onClick = { 
-                                showCheckoutDialog = false
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Bắt đầu trải nghiệm ngay!", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // PIN SETUP MODAL
     if (showPinSetupDialog) {
@@ -615,7 +503,6 @@ fun SettingsScreen(
 @Composable
 fun ThemeGrid(
     selectedThemeIndex: Int,
-    adsRemoved: Boolean,
     onThemeSelect: (Int) -> Unit
 ) {
     // 20 custom color themes
@@ -623,54 +510,27 @@ fun ThemeGrid(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Gợi ý miễn phí:",
+            text = "Lựa chọn tông màu giao diện:",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            themes.take(5).forEach { theme ->
-                val isSelected = selectedThemeIndex == theme.id
-                ThemeCircle(
-                    theme = theme,
-                    isSelected = isSelected,
-                    isLocked = false,
-                    onClick = { onThemeSelect(theme.id) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Bản Premium Pro (Mở khóa 15 màu sắc đặc sắc):",
-            style = MaterialTheme.typography.labelSmall,
-            color = if (adsRemoved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Large Premium grid (15 themes)
-        val premiumThemes = themes.drop(5)
-        
-        // Group premium themes in rows of 5 for elegant horizontal blocks
-        for (row in 0 until 3) {
+        // Group all 20 themes in rows of 5
+        for (row in 0 until 4) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             ) {
-                premiumThemes.slice(row * 5 until (row + 1) * 5).forEach { theme ->
+                themes.slice(row * 5 until (row + 1) * 5).forEach { theme ->
                     val isSelected = selectedThemeIndex == theme.id
                     ThemeCircle(
                         theme = theme,
                         isSelected = isSelected,
-                        isLocked = !adsRemoved,
+                        isLocked = false,
                         onClick = { onThemeSelect(theme.id) }
                     )
                 }

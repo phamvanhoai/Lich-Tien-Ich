@@ -27,7 +27,10 @@ import com.example.ui.screens.ChecklistScreen
 import com.example.ui.screens.LockScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.example.utils.DateTimeUtils
+import com.example.utils.LunarUtils
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -41,8 +44,16 @@ class MainActivity : ComponentActivity() {
             val fontScale by viewModel.fontScale.collectAsState()
             val isUnlocked by viewModel.isUnlocked.collectAsState()
             val pinCode by viewModel.pinCode.collectAsState()
+            val darkModeOption by viewModel.darkModeOption.collectAsState()
+
+            val darkTheme = when (darkModeOption) {
+                "light" -> false
+                "dark" -> true
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
 
             MyApplicationTheme(
+                darkTheme = darkTheme,
                 themeIndex = themeIndex,
                 fontScale = fontScale
             ) {
@@ -51,31 +62,72 @@ class MainActivity : ComponentActivity() {
                 } else {
                     val currentScreen by viewModel.currentScreen.collectAsState()
                     val adsRemoved by viewModel.adsRemoved.collectAsState()
+                    val allEvents by viewModel.allEvents.collectAsState()
+                    val allChores by viewModel.allChores.collectAsState()
+                    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                    val scope = rememberCoroutineScope()
 
-                    var showAdDetailsCheckout by remember { mutableStateOf(false) }
-
-                    Scaffold(
-                        topBar = {
-                            TopAppBar(
-                                navigationIcon = {
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(start = 12.dp, end = 4.dp)
-                                            .size(38.dp)
-                                            .background(
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                                shape = RoundedCornerShape(12.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Menu,
-                                            contentDescription = "Menu chính",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                    ModalNavigationDrawer(
+                        drawerState = drawerState,
+                        drawerContent = {
+                            ModalDrawerSheet(
+                                modifier = Modifier.width(320.dp),
+                                drawerContainerColor = MaterialTheme.colorScheme.background
+                            ) {
+                                DrawerContent(
+                                    allEvents = allEvents,
+                                    allChores = allChores,
+                                    currentScreen = currentScreen,
+                                    adsRemoved = adsRemoved,
+                                    onScreenSelect = { screen ->
+                                        viewModel.setScreen(screen)
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    onPurchasePremium = {
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    onLockApp = {
+                                        viewModel.lockApp()
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    onSelectToday = {
+                                        viewModel.selectDate(viewModel.getMidnightMillis(System.currentTimeMillis()))
+                                        viewModel.setScreen(AppScreen.Calendar)
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    pinCode = pinCode,
+                                    onClose = {
+                                        scope.launch { drawerState.close() }
                                     }
-                                },
+                                )
+                            }
+                        }
+                    ) {
+                        Scaffold(
+                            topBar = {
+                                TopAppBar(
+                                    navigationIcon = {
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(start = 12.dp, end = 4.dp)
+                                                .size(38.dp)
+                                                .background(
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .clickable {
+                                                    scope.launch { drawerState.open() }
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Menu,
+                                                contentDescription = "Menu chính",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    },
                                 title = {
                                     Text(
                                         text = "Lịch Tiện Ích",
@@ -129,25 +181,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
                                     }
-
-                                    // Initials profile avatar in modern square-round box
-                                    Box(
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .background(
-                                                MaterialTheme.colorScheme.primary,
-                                                shape = RoundedCornerShape(12.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "TV",
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = MaterialTheme.colorScheme.background
@@ -156,51 +190,6 @@ class MainActivity : ComponentActivity() {
                         },
                         bottomBar = {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // Dynamic simulated ad banner if not purchased premium
-                                if (!adsRemoved) {
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
-                                        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { showAdDetailsCheckout = true }
-                                            .testTag("ad_banner_bar")
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                                .fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Campaign,
-                                                    contentDescription = "QC",
-                                                    tint = MaterialTheme.colorScheme.tertiary,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    text = "Tắt quảng cáo & Mở khóa 20 giao diện màu sắc",
-                                                    fontSize = 11.sp,
-                                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                            }
-                                            Text(
-                                                text = "XÓA QUẢNG CÁO",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.tertiary,
-                                                modifier = Modifier
-                                                    .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
                                 NavigationBar(
                                     containerColor = MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.testTag("app_navigation_bar")
@@ -259,110 +248,299 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-
-                    // AD CHECKOUT GATEWAY OVERLAY DIALOG
-                    if (showAdDetailsCheckout) {
-                        Dialog(onDismissRequest = { showAdDetailsCheckout = false }) {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
-                                    .testTag("ad_checkout_dialog")
-                            ) {
-                                var payStep by remember { mutableStateOf(0) } // 0: options, 1: loading, 2: success
-
-                                Column(
-                                    modifier = Modifier.padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    if (payStep == 0) {
-                                        Text(
-                                            text = "Gỡ quảng cáo trọn đời",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            text = "Sở hữu giao diện tối giản không quảng cáo, mở khóa toàn vẹn 20 màu giao diện nghệ thuật chỉ với 1 lần mua duy nhất.",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            textAlign = TextAlign.Center,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                        )
-                                        Spacer(modifier = Modifier.height(24.dp))
-                                        
-                                        val methods = listOf(
-                                            "Thẻ tín dụng / Ghi nợ (Visa/Mastercard)",
-                                            "Ví điện tử MoMo",
-                                            "Thanh toán ShopeePay",
-                                            "Chuyển khoản Ngân hàng (QR Pay)"
-                                        )
-                                        methods.forEach { method ->
-                                            Card(
-                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                                                shape = RoundedCornerShape(10.dp),
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable { payStep = 1 }
-                                                    .padding(vertical = 4.dp)
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.padding(14.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Payment,
-                                                        contentDescription = "Pay icon",
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                    Spacer(modifier = Modifier.width(12.dp))
-                                                    Text(method, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                                                }
-                                            }
-                                        }
-                                        
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        TextButton(onClick = { showAdDetailsCheckout = false }) {
-                                            Text("Hủy", color = MaterialTheme.colorScheme.error)
-                                        }
-                                    } else if (payStep == 1) {
-                                        Text("Đang kết nối cổng MoMo/Visa...", fontWeight = FontWeight.Bold)
-                                        Spacer(modifier = Modifier.height(24.dp))
-                                        CircularProgressIndicator(modifier = Modifier.size(50.dp))
-                                        Spacer(modifier = Modifier.height(24.dp))
-                                        
-                                        LaunchedEffect(Unit) {
-                                            delay(1500)
-                                            viewModel.purchaseRemoveAds()
-                                            payStep = 2
-                                        }
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Celebration,
-                                            contentDescription = "Thành công",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Kích hoạt Premium thành công!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text("Biểu ngữ quảng cáo đã bị gỡ vĩnh viễn. Đã mở khóa 15 màu sắc chủ đề nghệ thuật mới!", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                                        Spacer(modifier = Modifier.height(24.dp))
-                                        Button(
-                                            onClick = { showAdDetailsCheckout = false },
-                                            shape = RoundedCornerShape(12.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Bắt đầu khám phá", fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
+
+
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DrawerContent(
+    allEvents: List<com.example.data.Event>,
+    allChores: List<com.example.data.Chore>,
+    currentScreen: AppScreen,
+    adsRemoved: Boolean,
+    onScreenSelect: (AppScreen) -> Unit,
+    onPurchasePremium: () -> Unit,
+    onLockApp: () -> Unit,
+    onSelectToday: () -> Unit,
+    pinCode: String,
+    onClose: () -> Unit
+) {
+    var showHelpGuide by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(16.dp)
+    ) {
+        // Close Drawer button & App Logo
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarMonth,
+                        contentDescription = "Logo",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Lịch Tiện Ích",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Phiên bản v1.2.0",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                }
+            }
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Đóng menu",
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Solar / Lunar Calendar info block
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            ),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Hôm nay",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = DateTimeUtils.formatDateVietnamese(System.currentTimeMillis()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = LunarUtils.getLunarDateString(System.currentTimeMillis()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Application statistics counters
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = allEvents.size.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Sự kiện lịch",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val pendingChores = allChores.count { !it.isCompleted }
+                    Text(
+                        text = pendingChores.toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = "Việc cần làm",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Navigation Sections
+        Text(
+            text = "CHỨC NĂNG",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Navigation Drawer Item - Calendar Screen
+        NavigationDrawerItem(
+            label = { Text("Lịch trình chính", fontWeight = FontWeight.Bold) },
+            selected = currentScreen == AppScreen.Calendar,
+            onClick = { onScreenSelect(AppScreen.Calendar) },
+            icon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        // Navigation Drawer Item - Checklist Screen
+        NavigationDrawerItem(
+            label = { Text("Danh sách công việc", fontWeight = FontWeight.Bold) },
+            selected = currentScreen == AppScreen.Checklist,
+            onClick = { onScreenSelect(AppScreen.Checklist) },
+            icon = { Icon(Icons.Default.Checklist, contentDescription = null) },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        // Navigation Drawer Item - Settings Screen
+        NavigationDrawerItem(
+            label = { Text("Cấu hình cài đặt", fontWeight = FontWeight.Bold) },
+            selected = currentScreen == AppScreen.Settings,
+            onClick = { onScreenSelect(AppScreen.Settings) },
+            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        // Select Today quick action
+        NavigationDrawerItem(
+            label = { Text("Xem hôm nay", fontWeight = FontWeight.Bold) },
+            selected = false,
+            onClick = onSelectToday,
+            icon = { Icon(Icons.Default.Today, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            colors = NavigationDrawerItemDefaults.colors(
+                unselectedContainerColor = Color.Transparent
+            )
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // User guide expandable block
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .clickable { showHelpGuide = !showHelpGuide }
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Help",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Hướng dẫn sử dụng nhanh",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Icon(
+                        imageVector = if (showHelpGuide) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Expand",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                if (showHelpGuide) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "• Bấm nút tròn '+' góc dưới để thêm sự kiện mới hoặc công việc mới một cách nhanh chóng.\n" +
+                               "• Vuốt lịch tháng sang trái/phải hoặc chạm mũi tên để đổi tháng.\n" +
+                               "• Đặt mật khẩu PIN trong phần Cài đặt để bảo mật ứng dụng an toàn.\n" +
+                               "• Tùy chọn 20 giao diện sắc màu đa dạng cho phong cách riêng của bạn.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+
+        // Action Buttons at bottom
+        if (pinCode.isNotEmpty()) {
+            OutlinedButton(
+                onClick = onLockApp,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Khóa App", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

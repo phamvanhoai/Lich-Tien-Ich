@@ -42,6 +42,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _themeIndex = MutableStateFlow(0)
     val themeIndex: StateFlow<Int> = _themeIndex.asStateFlow()
 
+    private val _darkModeOption = MutableStateFlow("system") // "system", "light", "dark"
+    val darkModeOption: StateFlow<String> = _darkModeOption.asStateFlow()
+
     private val _fontSizeIndex = MutableStateFlow(4) // standard (100%)
     val fontSizeIndex: StateFlow<Int> = _fontSizeIndex.asStateFlow()
 
@@ -51,6 +54,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _pinCode = MutableStateFlow("")
     val pinCode: StateFlow<String> = _pinCode.asStateFlow()
+
+    private val _userName = MutableStateFlow("Thành Viên")
+    val userName: StateFlow<String> = _userName.asStateFlow()
+
+    private val _userBio = MutableStateFlow("Người dùng đam mê tiện ích lịch trình")
+    val userBio: StateFlow<String> = _userBio.asStateFlow()
 
     private val _isUnlocked = MutableStateFlow(true)
     val isUnlocked: StateFlow<Boolean> = _isUnlocked.asStateFlow()
@@ -77,6 +86,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         "ads_removed" -> _adsRemoved.value = setting.value.toBoolean()
                         "shared_calendars_enabled" -> _sharedCalendarsEnabled.value = setting.value.toBoolean()
+                        "user_name" -> _userName.value = setting.value
+                        "user_bio" -> _userBio.value = setting.value
+                        "dark_mode_option" -> _darkModeOption.value = setting.value
                     }
                 }
             }
@@ -296,6 +308,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _sharedCalendarsEnabled.value = enabled
         viewModelScope.launch {
             repository.saveSetting("shared_calendars_enabled", enabled.toString())
+        }
+    }
+
+    fun updateUserName(name: String) {
+        _userName.value = name
+        viewModelScope.launch {
+            repository.saveSetting("user_name", name)
+        }
+    }
+
+    fun updateUserBio(bio: String) {
+        _userBio.value = bio
+        viewModelScope.launch {
+            repository.saveSetting("user_bio", bio)
+        }
+    }
+
+    fun updateDarkModeOption(option: String) {
+        _darkModeOption.value = option
+        viewModelScope.launch {
+            repository.saveSetting("dark_mode_option", option)
         }
     }
 
