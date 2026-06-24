@@ -13,22 +13,16 @@
                 android:startY="0"
                 android:endX="108"
                 android:endY="108">
-                <item android:color="#E31C1C" android:offset="0.0" />
-                <item android:color="#780505" android:offset="1.0" />
+                <item android:color="#FFFFFF" android:offset="0.0" />
+                <item android:color="#F1F5F9" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Traditional Asian decorative rings for lunar calendar aesthetic -->
+    <!-- Subtle background halo for depth -->
     <path
-        android:pathData="M54,10 C78.3,10 98,29.7 98,54 C98,78.3 78.3,98 54,98 C29.7,98 10,78.3 10,54 C10,29.7 29.7,10 54,10 Z"
-        android:strokeColor="#FFD700"
-        android:strokeWidth="1.2"
+        android:pathData="M54,12 C77.2,12 96,30.8 96,54 C96,77.2 77.2,96 54,96 C30.8,96 12,77.2 12,54 C12,30.8 30.8,12 54,12 Z"
+        android:strokeColor="#E2E8F0"
+        android:strokeWidth="1.0"
         android:fillColor="#00000000"
-        android:strokeAlpha="0.25" />
-    <path
-        android:pathData="M54,18 C73.9,18 90,34.1 90,54 C90,73.9 73.9,90 54,90 C34.1,90 18,73.9 18,54 C18,34.1 34.1,18 54,18 Z"
-        android:strokeColor="#FFD700"
-        android:strokeWidth="0.6"
-        android:fillColor="#00000000"
-        android:strokeAlpha="0.15" />
+        android:strokeAlpha="0.6" />
 </vector>
