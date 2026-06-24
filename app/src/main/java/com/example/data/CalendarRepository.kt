@@ -13,9 +13,11 @@ class CalendarRepository(private val db: AppDatabase) {
 
     fun getEventsForDate(dateMillis: Long): Flow<List<Event>> = eventDao.getEventsForDate(dateMillis)
 
-    suspend fun insertEvent(event: Event) = eventDao.insertEvent(event)
+    suspend fun insertEvent(event: Event): Long = eventDao.insertEvent(event)
     suspend fun deleteEvent(event: Event) = eventDao.deleteEvent(event)
     suspend fun deleteEventById(id: Int) = eventDao.deleteEventById(id)
+    suspend fun getEventById(id: Int): Event? = eventDao.getEventById(id)
+    suspend fun getEventsWithReminders(): List<Event> = eventDao.getEventsWithReminders()
 
     suspend fun insertChore(chore: Chore) = choreDao.insertChore(chore)
     suspend fun updateChore(chore: Chore) = choreDao.updateChore(chore)

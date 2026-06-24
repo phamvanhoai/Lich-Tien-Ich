@@ -12,13 +12,19 @@ interface EventDao {
     fun getEventsForDate(dateMillis: Long): Flow<List<Event>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEvent(event: Event)
+    suspend fun insertEvent(event: Event): Long
 
     @Delete
     suspend fun deleteEvent(event: Event)
 
     @Query("DELETE FROM events WHERE id = :id")
     suspend fun deleteEventById(id: Int)
+
+    @Query("SELECT * FROM events WHERE id = :id LIMIT 1")
+    suspend fun getEventById(id: Int): Event?
+
+    @Query("SELECT * FROM events WHERE hasReminder = 1")
+    suspend fun getEventsWithReminders(): List<Event>
 }
 
 @Dao

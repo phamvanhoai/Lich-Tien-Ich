@@ -1180,7 +1180,8 @@ fun CalendarScreen(
                                             endTime = finalEnd,
                                             url = url,
                                             location = location,
-                                            hasReminder = hasReminder
+                                            hasReminder = hasReminder,
+                                            reminderMinutesBefore = reminderOffset
                                         )
                                         showAddEventDialog = false
                                         Toast.makeText(context, "Đã thêm sự kiện thành công!", Toast.LENGTH_SHORT).show()

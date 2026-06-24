@@ -1,6 +1,8 @@
 package com.example
 
 import android.os.Bundle
+import android.os.Build
+import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -34,10 +36,26 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        // Handle results if needed
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
         setContent {
             val themeIndex by viewModel.themeIndex.collectAsState()
             val fontScale by viewModel.fontScale.collectAsState()
@@ -189,6 +207,13 @@ class MainActivity : ComponentActivity() {
                         },
                         bottomBar = {
                             Column(modifier = Modifier.fillMaxWidth()) {
+                                val navItemColors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
                                 NavigationBar(
                                     containerColor = MaterialTheme.colorScheme.surface,
                                     modifier = Modifier.testTag("app_navigation_bar")
@@ -203,6 +228,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         label = { Text("Ngày", fontWeight = FontWeight.Bold) },
+                                        colors = navItemColors,
                                         modifier = Modifier.testTag("nav_day")
                                     )
                                     NavigationBarItem(
@@ -215,6 +241,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         label = { Text("Tuần", fontWeight = FontWeight.Bold) },
+                                        colors = navItemColors,
                                         modifier = Modifier.testTag("nav_week")
                                     )
                                     NavigationBarItem(
@@ -227,6 +254,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         label = { Text("Tháng", fontWeight = FontWeight.Bold) },
+                                        colors = navItemColors,
                                         modifier = Modifier.testTag("nav_month")
                                     )
                                     NavigationBarItem(
@@ -239,6 +267,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         },
                                         label = { Text("Cài Đặt", fontWeight = FontWeight.Bold) },
+                                        colors = navItemColors,
                                         modifier = Modifier.testTag("nav_settings")
                                     )
                                 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
 import com.example.ui.theme.FontSizeOptions
+import com.example.utils.ReminderManager
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -102,6 +103,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     populateDefaultData()
                 }
             }
+            ReminderManager.rescheduleAll(application, repository)
         }
     }
 
@@ -208,7 +210,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         endTime: String,
         url: String,
         location: String,
-        hasReminder: Boolean
+        hasReminder: Boolean,
+        reminderMinutesBefore: Int = 15
     ) {
         viewModelScope.launch {
             val event = Event(
@@ -221,15 +224,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 endTime = endTime,
                 url = url,
                 location = location,
-                hasReminder = hasReminder
+                hasReminder = hasReminder,
+                reminderMinutesBefore = reminderMinutesBefore
             )
-            repository.insertEvent(event)
+            val generatedId = repository.insertEvent(event)
+            val eventWithId = event.copy(id = generatedId.toInt())
+            if (hasReminder) {
+                ReminderManager.scheduleReminder(getApplication(), eventWithId)
+            }
         }
     }
 
     fun deleteEvent(event: Event) {
         viewModelScope.launch {
             repository.deleteEvent(event)
+            ReminderManager.cancelReminder(getApplication(), event)
         }
     }
 
