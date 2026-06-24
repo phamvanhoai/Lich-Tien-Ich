@@ -1,0 +1,6 @@
+{
+  "name": "Lịch Tiện Ích",
+  "description": "Ứng dụng lịch tiện ích đa năng giúp quản lý thời gian, sự kiện và danh sách công việc hiệu quả và đẹp mắt.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
